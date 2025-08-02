@@ -1,52 +1,53 @@
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.services.app-name;   
-  # cfg = config.programs.app-name;
-
-  configFile = pkgs.writeText "app-name.conf" ''
-    aSetting=${cfg.optionText}
-    anotherSetting=${toString cfg.optionNumber}
-  '';
-in
 {
-  options.services.app-name = {
-  # options.programs.app-name = {  
-    enable = lib.mkEnableOption "app-name";
+  # Enable the PostgreSQL service and configure it.
+  services.postgresql = {
+    enable = true;
+    package = pkgs.postgresql; # Use the default PostgreSQL package.
 
-    # Link the module to a package
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.app-name;
-      description = "A descriptin of the app or service ";
-    };
+    # This is a list of databases to create on the first run.
+    # We'll create a database named 'standard'.
+    databases = [
+      {
+        name = "standard";
+        owner = "postgres"; # The default owner is the 'postgres' user
+        ensureCreate = true;
+      }
+    ];
 
-    # Set options 
-    optionText = lib.mkOption {
-      type = lib.types.str;
-      default = "words or whatever";
-      description = "Description of what the option does";
-    };
+    # You can also use an initial script to set up a database schema.
+    # This script would be run once when the database is created for the first time.
+    # initialScript = pkgs.writeText "init-standard-db.sql" ''
+    #   -- The SQL script to initialize the 'standard' database.
+    #   CREATE TABLE mytable (
+    #     id SERIAL PRIMARY KEY,
+    #     name VARCHAR(255)
+    #   );
+    # '';
 
-    optionNumber = lib.mkOption { 
-      type = lib.types.int;
-      default = 80085;
-      description = "Description of what the option does";
-    };
+    # Set up a dedicated user for the database (optional but recommended)
+    # users = [
+    #   {
+    #     name = "standard_user";
+    #     ensureCreate = true;
+    #   }
+    # ];
   };
 
-
-  # Systemd Service
-  config = lib.mkIf cfg.enable {
-    systemd.services.app-name = { 
-      description = "Describe your service"; 
-      after = [ "network.target" ];
-      wantedBy = [ "multi-user.target" ];
-      serviceConfig = {
-        ExecStart = "${cfg.package}/bin/app-name ${configFile}";
-        Restart = "always";
-      };
+  # This is how the module system implicitly defines the systemd service.
+  # The 'services.postgresql.enable' option automatically creates and manages this service.
+  # You don't need to write this part yourself, but it's good to know what's happening
+  # behind the scenes.
+  systemd.services.postgresql = {
+    description = "PostgreSQL Database Server";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.postgresql}/bin/pg_ctl -D /var/lib/postgresql -l /var/log/postgresql/server.log start";
+      Restart = "always";
+      Type = "forking";
+      User = "postgres";
     };
   };
-
 }
