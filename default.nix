@@ -1,8 +1,8 @@
 { config, lib, pkgs, ... }:
 
 let
-  # The configuration for the module is available under config.services.rescile-standards
-  cfg = config.services.rescile-standards;
+  # The configuration for the module is available under config.services.psql-server
+  cfg = config.services.psql-server;
 
   # Conditionally load and parse a JSON file containing the user if the option is set.
   usersFromJSON = lib.mkIf cfg.initialUsersFile (
@@ -18,8 +18,8 @@ let
 in
 {
   # Define the options for the module. This makes the options configurable from configuration.nix.
-  options.services.rescile-standards = {
-    enable = lib.mkEnableOption "rescile-standards";
+  options.services.psql-server = {
+    enable = lib.mkEnableOption "psql-server";
 
     # Define the port option with a default value that can be overridden.
     port = lib.mkOption {
@@ -61,7 +61,7 @@ in
       # Create the database with the name "standard".
       databases = [
         {
-          name = "standard";
+          name = "mypsql";
           owner = "postgres";
           ensureCreate = true;
         }
